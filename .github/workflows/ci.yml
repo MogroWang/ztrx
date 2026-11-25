@@ -53,7 +53,16 @@ jobs:
       - name: Install dependencies
         run: cargo fetch --locked
       # README's build command, widened to the whole workspace so a broken
-      # auxiliary crate (xtask) fails here as well. The artifact is not
-      # uploaded: this job is a compile gate, not a release lane.
+      # auxiliary crate (xtask) fails here as well.
       - name: Build
         run: cargo build --workspace --release --locked
+      # target/ disappears with the runner, so the binary only outlives the run
+      # once it is attached to it. if-no-files-found turns a renamed or moved
+      # binary into a red job instead of a silently empty artifact.
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: victory-release
+          path: target/release/victory.exe
+          if-no-files-found: error
+          retention-days: 14
