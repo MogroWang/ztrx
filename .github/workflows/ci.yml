@@ -66,3 +66,15 @@ jobs:
           path: target/release/victory.exe
           if-no-files-found: error
           retention-days: 14
+      # Nothing extra is compiled for this: the release profile keeps line
+      # tables (debug = "line-tables-only" in Cargo.toml), so the link step
+      # already writes the PDB. It ships as its own artifact because only crash
+      # triage needs it, and it must come from the same run as the exe it
+      # explains - a PDB from another run will not match.
+      - name: Upload symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: victory-release-symbols
+          path: target/release/victory.pdb
+          if-no-files-found: error
+          retention-days: 14
