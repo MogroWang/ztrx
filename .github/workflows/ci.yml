@@ -4,10 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Manual run from the Actions tab, e.g. to rebuild main without a new commit.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# One run per ref; a new push cancels the previous run instead of queueing a
+# second one for the same branch.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -31,3 +35,25 @@ jobs:
       # Includes xtask's repository_passes_policy, the asset-policy check.
       - name: Tests
         run: cargo test --workspace --locked
+
+  # Compiles the shipping profile. Clippy and the tests above only cover the
+  # dev profile, so a release-only breakage (codegen, link, feature wiring in
+  # dependency builds) would otherwise reach a user before CI saw it.
+  build:
+    name: Build (release)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      # The version and components pinned in rust-toolchain.toml.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # Dependency install step: pulls exactly the versions in Cargo.lock and
+      # fails on a stale lockfile instead of resolving new ones.
+      - name: Install dependencies
+        run: cargo fetch --locked
+      # README's build command, widened to the whole workspace so a broken
+      # auxiliary crate (xtask) fails here as well. The artifact is not
+      # uploaded: this job is a compile gate, not a release lane.
+      - name: Build
+        run: cargo build --workspace --release --locked
